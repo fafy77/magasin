@@ -6,10 +6,12 @@ use App\Entity\Product;
 use App\Form\ProductType;
 use App\Repository\ProductRepository;
 use Doctrine\ORM\EntityManagerInterface;
-use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
+use Sensio\Bundle\FrameworkExtraBundle\Configuration\IsGranted;
+use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\Security\Core\Exception\AccessDeniedException;
 
 class StoreController extends AbstractController
 {
@@ -35,13 +37,28 @@ class StoreController extends AbstractController
      * @Route("/store/delete/{id}", name="delete_prod")
      */
     public function deleteProduct(Product $prod, EntityManagerInterface $manager) {
-        $manager->remove($prod);
-        $manager->flush();
-        return $this->redirectToRoute('store');
+
+        try {
+            $this->denyAccessUnLessGranted("ROLE_ADMIN");
+            //si Accès autorisé on execute ce qui suit
+            $manager->remove($prod);
+            $manager->flush();
+       
+        }
+        catch (AccessDeniedException $ex){
+            $this->addFlash('error', "vous n'avez pas d'accès à cette ressource");
+
+        }
+
+        finally{
+
+             return $this->redirectToRoute('store');
+        }
     }
 
     /**
      * @Route ("/store/edit/{id}", name="edit_prod")
+     * @IsGranted("ROLE_ADMIN" , statusCode=401, message="accès refusé à cette page")
      * @Route("/store/new", name="new_prod")
      */
     public function editProduct(Product $product=null, Request $req, EntityManagerInterface $manager){
